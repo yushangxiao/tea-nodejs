@@ -1,0 +1,414 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>商品展示</title>
+    <link href="/layer/css/layui.css" rel="stylesheet">
+    <script src="/layer/layui.js"></script> 
+<style>
+.cart-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.product-name {
+    flex-grow: 1;  /* 使得名称可以占据多余空间 */
+    font-size: 16px;
+    color: #333;
+}
+
+.product-price {
+    font-size: 14px;
+    color: #666;
+    margin: 0 10px;
+}
+
+.product-quantity {
+    font-size: 14px;
+    color: #666;
+}
+
+/* 可以添加的额外样式，提高用户体验 */
+.cart-item:hover {
+    background-color: #f0f0f0;
+}
+
+        body {
+            font-family: '微软雅黑', sans-serif;
+            /* background-color: #96d590; */
+            background-image: url('/images/back.jpg');
+            background-size: cover;
+        }
+        .productImg{
+            height: 150px;
+            width: 250px;
+        }
+        .all_content {
+            width: 80%;
+            margin: 0 auto;
+            
+
+        }
+        #userinfo {
+            text-align: right;
+            margin-right: 100px;
+        }
+        #username {
+            color: #fff;
+            font-size: 20px;
+        }
+        .onSale {
+            color: #fff;
+            font-size: 20px;
+            margin-left: 100px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            background-color: #343232;
+            /* 下面圆润 */
+            border-bottom-left-radius: 30px;  
+    border-bottom-right-radius: 30px; 
+        }
+        .product-Conatiner {
+            width: 20%;           
+        }
+        .container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: -10px; 
+        }
+
+        .container > * {
+            flex: 1 1 250px; 
+            margin: 10px;
+        }
+        .katou{
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .productCard{
+            background-color: #fff;
+            border-radius: 10px;
+            width: 250px;
+            height: 270px;
+            transition: transform 0.3s ease;
+        }
+        .productCard:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  /* 添加阴影效果 */
+    transform: scale(1.05);  /* 轻微放大 */
+}
+
+        #floating-cart {
+    position: fixed;
+    bottom: 90px;
+    right: 40px;
+    z-index: 1000;
+}
+
+#cart-button {
+    background: linear-gradient(135deg, #4caf50, #81c784); /* 绿色渐变 */
+    color: white;
+    border: none;
+    cursor: pointer;
+    padding: 15px 30px; 
+    font-size: 18px; 
+    border-radius: 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    animation: bounce 1s;
+}
+
+#cart-button:hover {
+    background: linear-gradient(135deg, #81c784, #4caf50);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+#cart-button:active {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transform: translateY(1px);
+}
+
+
+        #cart-content {
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 20px;
+            position: absolute;
+            bottom: 70px;
+            width: 300px;
+            right: 0;
+            border-radius: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .visible {
+            display: block;
+        }
+        @keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-30px);
+  }
+  60% {
+    transform: translateY(-15px);
+  }
+}
+
+
+</style>
+
+</head>
+
+<body>
+<div class="all_content layui-col-space15">
+    <div class="header">
+        <div class="onSale">
+            当前货品数量: <span id="product-num"></span>
+            在售数量: <span id="onsale">
+        </div>
+        <div id="userinfo">
+            <div id="username">欢迎你，</div>
+        </div>
+    </div>
+    <div class=" mygray" style="padding: 16px;height: 100vh;">
+        <div id="products" class="layui-row layui-col-space15 container" >
+        </div>
+    </div>
+</div>    
+<div id="floating-cart">
+    <button id="cart-button">购物车</button>
+    <div id="cart-content" class="hidden">
+    </div>
+</div>
+<script>
+    var layer = layui.layer;
+    fetch('/api/user/info', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }})
+    .then(function(response) {
+        if (response.status != 200) {
+            document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+        return response.json();
+    }).then(function(data) {
+        if (data.success) {
+            // 显示用户信息
+            document.getElementById('username').innerText += data.username;
+            layer.msg("欢迎你,"+data.username, {icon: 1});
+            if (data.is_admin) {
+                document.getElementById('username').innerText += ' (管理员)'
+                document.getElementById('username').innerHTML += '<button onclick="window.location.href = \'/adminView\'" class="layui-btn layui-btn-sm layui-btn-danger">进入管理后台</button>';
+            }
+            // 退出登录
+            document.getElementById('username').innerHTML += '&nbsp;<button type="button" class="layui-btn layui-btn-sm layui-btn-danger"" lay-on="confirm">退出登录</button>';
+        } else {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+    }).catch(function(error) {
+        console.error('Error:', error);
+    });
+</script>
+<script>
+    fetch('/api/product/allProduct', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response =>{
+        // console.log(response);
+        if (response.status != 200) {
+            layer.msg('获取商品失败', {icon: 2});
+            // window.location.href = '/login';
+        }
+        return response.json()})
+    .then(data => {
+        // console.log(data);
+        const productsDiv = document.getElementById('products');
+        document.getElementById('product-num').innerText += data.data.length.toString();
+        let onSale = 0;
+        data.data.forEach(product => {
+            const productContanier = document.createElement('div');
+            productContanier.className = 'layui-col-md6 product-Conatiner';
+            const productCard = document.createElement('div');
+            productCard.className = 'productCard';
+            productContanier.appendChild(productCard);
+            const productName = document.createElement('div');
+            productName.className = 'layui-card-header katou';
+            productName.innerText = product.productName;
+            productCard.appendChild(productName);
+            const productImg = document.createElement('img');
+            productImg.className = 'productImg';
+            productImg.src = "/images/product/"+product.imageName;
+            productImg.alt = '商品图片';
+            productCard.appendChild(productImg);
+
+            const productPrice = document.createElement('div');
+            productPrice.className = 'layui-card-body';
+            productPrice.innerText = '价格: ' + product.productPrice;
+            productCard.appendChild(productPrice);
+
+            if (product.isOnSale) {
+                productPrice.innerHTML += '<br><button type="button" class="layui-btn layui-btn-sm" onclick="buyProduct(\'' + product._id + '\', \'' + product.productName + '\', ' + product.productPrice + ')">购买</button>';
+                onSale++;
+            }
+            else {
+                productPrice.innerHTML += '<br>'+'<button class="layui-btn layui-btn-sm layui-btn-disabled">已下架</button>';
+            }
+
+            productsDiv.appendChild(productContanier);
+        });
+        document.getElementById('onsale').innerText += onSale.toString();
+    });
+    layui.use(function(){
+
+
+  var util = layui.util;
+  // 批量事件
+  util.on('lay-on', {
+    confirm: function(){
+      layer.confirm('您确定退出登录吗?', {
+        btn: ['确定', '关闭'] //按钮
+      }, function(){
+        // 清除cookie
+        fetch('/api/user/logout').then(res => res.json()).then(data=>{
+            if (data.success){
+                layer.msg('已退出登录', {icon: 1});
+                localStorage.removeItem('token');
+                localStorage.removeItem('cart');
+                setTimeout(function() {
+                window.location.href = '/login';
+            }, 1000)
+            }
+      })
+      }, function(){
+        layer.msg('已取消', {icon: 1});
+      });
+    }
+});}
+    );
+function showEmalil(){
+    fetch('/api/user/email').then(res => res.json()).then(data=>{
+        if (data.success){
+            layer.alert('购买请联系邮箱: '+data.email,{icon: 6},function(){
+            // 剪贴板放置邮箱
+            navigator.clipboard.writeText(data.email).then(function() {
+            /* clipboard successfully set */
+            layer.msg('邮箱已复制到剪贴板,期待您的联系', {icon: 1});
+        }, function() {
+            /* clipboard write failed */
+            // layer.msg('邮箱复制失败', {icon: 2});
+            console.log('邮箱复制失败');
+        });
+})
+        }
+        else{
+            layer.msg('获取邮箱失败', {icon: 2});
+        }
+    })
+
+}
+
+function buyProduct(id,name,price){
+    localStorage.getItem('cart') || localStorage.setItem('cart', JSON.stringify([]));
+    var cart = JSON.parse(localStorage.getItem('cart'));
+    var product = cart.find(item => item.id === id);
+    if (product) {
+        product.quantity++;
+    } else {
+        product = {
+            id: id,
+            name: name,
+            price: price,
+            quantity: 1
+        };
+        cart.push(product);
+    }
+    localStorage.setItem('cart', JSON.stringify(cart));
+    layer.msg('已为您添加到购物车', {icon: 1});
+    // 购物车动画
+    document.getElementById('cart-button').style.animation = 'none';
+    setTimeout(function() {
+        document.getElementById('cart-button').style.animation = 'bounce 1s';
+    }, 100);
+
+}
+
+function deleteProduct(id) {
+    var cart = JSON.parse(localStorage.getItem('cart'));
+    var index = cart.findIndex(item => item.id === id);
+    if (index!== -1) {
+        cart.splice(index, 1);
+        localStorage.setItem('cart', JSON.stringify(cart));
+        layer.msg('已从购物车删除', {icon: 1});
+        document.getElementById('cart-button').click();
+    }
+}
+</script>
+<script>
+    document.getElementById('cart-button').addEventListener('click', function() {
+    var cartContent = document.getElementById('cart-content');
+    if (cartContent.classList.contains('hidden')) {
+        cartContent.classList.remove('hidden');
+        cartContent.classList.add('visible');
+        if (!localStorage.getItem('cart') || localStorage.getItem('cart') === '[]'){
+            document.getElementById('cart-content').innerHTML = '购物车为空哦';
+        }
+        else{
+            var cart = JSON.parse(localStorage.getItem('cart'));
+            var cartContent = document.getElementById('cart-content');
+            cartContent.innerHTML = '';
+            cart.forEach(function(item) {
+                var cartItem = document.createElement('div');
+                cartItem.className = 'cart-item';
+                cartItem.innerHTML = '<span class="product-name">' + item.name + '</span><span class="product-price">单价' + item.price + '元</span><span class="product-quantity">共计' + item.quantity + '个</span>';
+                // 删除按钮
+                cartItem.innerHTML+='<button class="layui-btn layui-btn-sm layui-btn-danger" onclick="deleteProduct(\'' + item.id + '\');event.stopPropagation()" >删除</button>';
+                cartContent.appendChild(cartItem);
+            });
+            // 总金额
+            var totalPrice = cart.reduce(function(acc, item) {
+                return acc + item.price * item.quantity;
+            }, 0);
+            cartContent.innerHTML += '<div style="display: flex; justify-content: space-between; align-items: center;"><p style="text-align: right; font-weight: bold;color: #E6BE8A;">总金额:'+ totalPrice + '元</p>'+'<button class="layui-btn layui-btn" onclick="showEmalil()" style="float: right; border-radius: 12px;">结算</button></div>';
+        }
+    } else {
+        cartContent.classList.remove('visible');
+        cartContent.classList.add('hidden');
+    }
+});
+
+// 点击购物车外部收回
+document.addEventListener('click', function(event) {
+    var cartContent = document.getElementById('cart-content');
+    if (event.target.id !== 'cart-button' && cartContent.classList.contains('visible')) {
+        cartContent.classList.remove('visible');
+        cartContent.classList.add('hidden');
+    }
+});
+
+</script>
+</body>
+</html>

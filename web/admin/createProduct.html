@@ -1,0 +1,105 @@
+<head>
+<link href="/layer/css/layui.css" rel="stylesheet">
+<script src="/layer/layui.js"></script> 
+</head>
+
+
+
+
+
+<div class="layui-form-item">
+    <div class="layui-input-group">
+      <div class="layui-input-split layui-input-prefix">
+        产品名称
+      </div>
+      <input type="text" placeholder="如，红茶" class="layui-input" id="productName">
+    </div>
+</div>
+<div class="layui-form-item">
+    <div class="layui-input-group">
+      <div class="layui-input-split layui-input-prefix">
+        产品价格
+      </div>
+      <input type="text" placeholder="如,15.8" class="layui-input" id="productPrice">
+    </div>
+</div>
+
+
+
+<div class="layui-upload-drag" style="display: block;" id="ID-upload-demo-drag">
+  <i class="layui-icon layui-icon-upload"></i> 
+  <div>点击或拖拽</div>
+  <div class="layui-hide" id="ID-upload-demo-preview">
+    <hr> <img src="" alt="上传成功后渲染" style="height: 150px;width: 250px;">
+  </div>
+</div>
+
+<div style="display: flex;justify-content: space-around;">
+<button onclick="submitProduct()" class="layui-btn layui-bg-blue ">提交</button>
+<button onclick="cancle()" class="layui-btn ">取消</button>
+</div>
+
+<script>
+    var index = parent.layer.getFrameIndex(window.name); //获取窗口索引
+function submitProduct() {
+    var productName = document.getElementById('productName').value;
+    var productPrice = document.getElementById('productPrice').value;
+    var uploadFileName = localStorage.getItem('uploadFileName');
+
+    // 价格转换为浮点数
+    productPrice = parseFloat(productPrice);
+    if (productName == '' || productPrice == '' ||!uploadFileName) {
+        parent.layer.msg('请填写完整信息',{time:600,icon:2});
+        return;
+    }
+    fetch("/api/admin/newProduct", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            productName: productName,
+            productPrice: productPrice,
+            fileName: uploadFileName
+
+        })
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            localStorage.removeItem('uploadFileName');
+            parent.layer.msg('创建成功',{time:3000,icon:1});
+            parent.layer.close(index);
+            parent.location.reload();
+        } else {
+            parent.layer.msg('创建失败,'+data.error,{time:3000,icon:2});
+            parent.layer.close(index);
+        }
+    })
+}
+function cancle() {
+    parent.layer.msg('已取消创建',{icon:1});
+    parent.layer.close(index);
+}
+</script>
+
+<script>
+    layui.use(function(){
+      var upload = layui.upload;
+      var layer = layui.layer;
+      var element = layui.element;
+      var $ = layui.$;
+      var uploadInst = upload.render({
+        elem: '#ID-upload-demo-drag',
+        size:10*1024,
+        url: '/api/admin/upload', 
+        accect:"images",
+        done: function(res){
+          layer.msg('上传成功');
+          $('#ID-upload-demo-preview').removeClass('layui-hide')
+          .find('img').attr('src', "/images/product/"+res.fileName);
+          localStorage.setItem('uploadFileName', res.fileName);
+          $('#ID-upload-demo-text').html(''); 
+        },
+      });
+    });
+    
+</script>
